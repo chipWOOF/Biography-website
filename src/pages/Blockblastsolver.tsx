@@ -1,12 +1,12 @@
 import { Header } from "@/components/Header";
-import { Projectlist } from "@/components/Projectlist";
+import { Bbsolver } from "@/components/Blockblastsolver";
 
 
 const Blockblastsolver = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <Projectlist />
+      <Bbsolver />
     </div>
   );
 };

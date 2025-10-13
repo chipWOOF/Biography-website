@@ -10,7 +10,7 @@ const defaultPieces = [
   { name: "L-Shape", shape: [[1, 0], [1, 0], [1, 1]] },
 ];
 
-export const Blockblastsolver = () => {
+export const Bbsolver = () => {
   const [grid, setGrid] = useState(() => {
     const saved = localStorage.getItem("blockblast-grid");
     return saved ? JSON.parse(saved) : Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
