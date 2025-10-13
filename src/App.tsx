@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Scroll from "./pages/Scroll";
 import Projects from "./pages/Projects";
+import Blockblastsolver from "./pages/Blockblastsolver";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/scroll" element={<Scroll />} />  
           <Route path="/projects" element={<Projects />} />
+          <Route path="/blockblastsolver" element={<Projects />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
