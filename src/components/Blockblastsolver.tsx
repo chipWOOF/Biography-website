@@ -170,7 +170,7 @@ function permute(arr) {
 }
 
 // ---- Component ----
-export const BlockBlastSolver = () => {
+export const Bbsolver = () => {
   // load grid from localStorage or make empty
   const [grid, setGrid] = useState(() => {
     try { const s = localStorage.getItem("bb-grid"); return s ? JSON.parse(s) : makeEmptyGrid(); }
