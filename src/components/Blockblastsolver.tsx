@@ -313,7 +313,7 @@ export const Bbsolver = () => {
                                                 if (pieceShape[pr][pc] === 1 && grid[r][c] === 0) previewHighlight = true;
                                             }
                                         }
-                                        const bg = cell ? "bg-primary" : "bg-green-400/60";
+                                        const bg = cell ? "bg-primary" : previewHighlight ? "bg-green-400/60" : "bg-muted";
                                         return <div key={`${r}-${c}`} className={`w-5 h-5 rounded-sm border ${bg}`} />;
                                     })
                                 )}
