@@ -7,11 +7,11 @@ const GRID_SIZE = 8;
 const DEFAULT_PIECE_KEYS = ["Square", "Line", "L-Shape"];
 
 const PIECE_DEFINITIONS: Record<string, { name: string; shape: number[][] }> = {
-  Square: { name: "Square", shape: [[1, 1], [1, 1]] },
-  Line: { name: "Line", shape: [[1, 1, 1, 1]] },
-  "L-Shape": { name: "L-Shape", shape: [[1, 0], [1, 0], [1, 1]] },
-  T: { name: "T", shape: [[1,1,1],[0,1,0]] },
-  Single: { name: "Single", shape: [[1]] },
+  Square: { name: "Square", shape: [[0, 0], [0, 0]] },
+  Line: { name: "Line", shape: [[0, 0, 0, 0]] },
+  "L-Shape": { name: "L-Shape", shape: [[0, 0], [0, 0], [0, 0]] },
+  T: { name: "T", shape: [[0,0,0],[0,0,0]] },
+  Single: { name: "Single", shape: [[0]] },
 };
 
 function makeEmptyGrid() {
@@ -300,13 +300,17 @@ export const Bbsolver = () => {
                           {previewBoards.map((b, idx) => (
                             <div key={idx} className="p-2 bg-muted rounded">
                               <div className="mb-1 text-sm">Step {idx+1}: {solution.steps[idx]?.pieceName ?? solution.steps[idx]?.pieceKey ?? "—"}</div>
-                              <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 0.7rem)` }}>
+                              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1.25rem)` }}>
                                 {b.map((row, r) =>
-                                  row.map((cell, c) => (
-                                    <div key={`${r}-${c}`} className={`w-2 h-2 ${cell ? "bg-primary" : "bg-muted"}`} />
-                                  ))
+                                    row.map((cell, c) => (
+                                    <div
+                                        key={`${r}-${c}`}
+                                        className={`w-5 h-5 rounded-sm border ${cell ? "bg-primary" : "bg-muted"}`}
+                                    />
+                                    ))
                                 )}
-                              </div>
+                                </div>
+
                               <div className="mt-1 text-sm">Cleared: {solution.steps[idx]?.linesCleared ?? 0}</div>
                             </div>
                           ))}
