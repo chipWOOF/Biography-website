@@ -302,24 +302,22 @@ export const Bbsolver = () => {
                               <div className="mb-1 text-sm">Step {idx+1}: {solution.steps[idx]?.pieceName ?? solution.steps[idx]?.pieceKey ?? "—"}</div>
                               <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1.25rem)` }}>
                                 {b.map((row, r) =>
-  row.map((cell, c) => {
-    let previewHighlight = false;
-    const step = solution?.steps?.[idx]; // idx corresponds to this step preview
-    if (step && step.r !== null) {
-      const pieceShape = PIECE_DEFINITIONS[step.pieceName]?.shape ?? step.shape ?? [[]];
-      const pr = r - step.r;
-      const pc = c - step.c;
-      if (pr >= 0 && pr < pieceShape.length && pc >= 0 && pc < pieceShape[0].length) {
-        if (pieceShape[pr][pc] === 1 && grid[r][c] === 0) previewHighlight = true;
-      }
-    }
-    const bg = cell ? "bg-primary" : previewHighlight ? "bg-green-400/60" : "bg-muted";
-    return <div key={`${r}-${c}`} className={`w-5 h-5 rounded-sm border ${bg}`} />;
-  })
-)}
-
+                                    row.map((cell, c) => {
+                                        let previewHighlight = false;
+                                        const step = solution?.steps?.[idx]; // idx corresponds to this step preview
+                                        if (step && step.r !== null) {
+                                            const pieceShape = PIECE_DEFINITIONS[step.pieceName]?.shape ?? step.shape ?? [[]];
+                                            const pr = r - step.r;
+                                            const pc = c - step.c;
+                                            if (pr >= 0 && pr < pieceShape.length && pc >= 0 && pc < pieceShape[0].length) {
+                                                if (pieceShape[pr][pc] === 1 && grid[r][c] === 0) previewHighlight = true;
+                                            }
+                                        }
+                                        const bg = cell ? "bg-primary" : "bg-green-400/60";
+                                        return <div key={`${r}-${c}`} className={`w-5 h-5 rounded-sm border ${bg}`} />;
+                                    })
+                                )}
                                 </div>
-
                               <div className="mt-1 text-sm">Cleared: {solution.steps[idx]?.linesCleared ?? 0}</div>
                             </div>
                           ))}
