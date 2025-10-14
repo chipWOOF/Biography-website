@@ -302,13 +302,18 @@ export const Bbsolver = () => {
                               <div className="mb-1 text-sm">Step {idx+1}: {solution.steps[idx]?.pieceName ?? solution.steps[idx]?.pieceKey ?? "—"}</div>
                               <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1.25rem)` }}>
                                 {b.map((row, r) =>
-                                    row.map((cell, c) => (
+                                row.map((cell, c) => {
+                                    const previewHighlight = cell === 1 && grid[r][c] === 0; // highlight where piece will go
+                                    const bg = cell ? "bg-primary" : previewHighlight ? "bg-green-400/60" : "bg-muted";
+                                    return (
                                     <div
                                         key={`${r}-${c}`}
-                                        className={`w-5 h-5 rounded-sm border ${cell ? "bg-primary" : "bg-muted"}`}
+                                        className={`w-2 h-2 ${bg}`}
                                     />
-                                    ))
+                                    );
+                                })
                                 )}
+
                                 </div>
 
                               <div className="mt-1 text-sm">Cleared: {solution.steps[idx]?.linesCleared ?? 0}</div>
