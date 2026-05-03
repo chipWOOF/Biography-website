@@ -14,6 +14,12 @@ const about = [
     content: "I was part of a team that made it to the finals of the CSESOC 2025 Hackathon! We created a website called Ping. Ping allowed students to connect with each other based on the subjects they were studying. Users would simply upload a location and the subjects they were studying, and Ping would match them with other students studying the same subject in the same location. This allowed students to easily find study partners and form study groups.", 
     link: "https://ping-mauve.vercel.app/",
     img: "https://ping-mauve.vercel.app/ping-logo.png",
+  },
+  {
+    name: "AI Security Simulation 🛡️",
+    content: "An interactive simulation demonstrating game theory in cybersecurity. Multiple AI agents with different personalities compete as red team (attackers) and blue team (defenders) to optimize security strategies. Watch as different attack and defense tactics evolve through simulated battles, leading to more robust security solutions.",
+    link: "/security-simulation",
+    img: "https://via.placeholder.com/400x300/4F46E5/FFFFFF?text=AI+Security+Sim",
   }
 ];
 
