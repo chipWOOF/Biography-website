@@ -948,6 +948,11 @@ const SecuritySimulation: React.FC = () => {
     }
   };
 
+  const handleCreateScenario = (scenario: Scenario) => {
+    setCustomScenario(scenario);
+    setSelectedScenario(scenario);
+  };
+
   const stats = getSummaryStats();
   const risk = simulationResults.length > 0
     ? (() => {
@@ -990,10 +995,11 @@ const SecuritySimulation: React.FC = () => {
       </div>
 
       <Tabs defaultValue="simulation" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="simulation">Simulation</TabsTrigger>
           <TabsTrigger value="agents">Agent Config</TabsTrigger>
           <TabsTrigger value="create-agent">Create Agent</TabsTrigger>
+          <TabsTrigger value="custom-scenario">Custom Scenario</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
@@ -1141,6 +1147,20 @@ const SecuritySimulation: React.FC = () => {
             </CardHeader>
             <CardContent>
               <AgentBuilderForm onCreate={handleCreateAgent} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="custom-scenario" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Scenario Builder</CardTitle>
+              <CardDescription>
+                Create personalized security simulation scenarios by defining company parameters
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScenarioBuilderForm onCreate={handleCreateScenario} />
             </CardContent>
           </Card>
         </TabsContent>
