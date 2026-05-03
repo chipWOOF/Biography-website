@@ -19,6 +19,9 @@ import { RiskCard } from '@/components/RiskCard';
 import { StatCard } from '@/components/StatCard';
 import { InsightCard } from '@/components/InsightCard';
 import { getReadableActionLabel } from '@/config/actionMappings';
+import { QLearningCharts, QValueSnapshot, ActionUsageSnapshot } from '@/components/QLearningCharts';
+
+const MAX_HISTORY = 100;
 
 const calculateRiskScore = (redWins: number, totalRounds: number, scenarioMultiplier: number) => {
   if (totalRounds === 0) return 0
@@ -66,11 +69,9 @@ const generateSecurityRecommendations = (
     };
   }
 
-  // Calculate breach probability
   const redWins = simulationResults.filter(r => r.outcome === 'red_win').length;
   const breachProbability = redWins / simulationResults.length;
 
-  // Analyze attack strategies by success rate
   const attackStrategyStats = new Map<string, { wins: number; total: number }>();
   simulationResults.forEach(result => {
     const strategy = result.redStrategy;
@@ -82,7 +83,6 @@ const generateSecurityRecommendations = (
     if (result.outcome === 'red_win') stats.wins++;
   });
 
-  // Rank attack strategies by success rate
   const attackRankings = Array.from(attackStrategyStats.entries())
     .map(([strategy, stats]) => ({
       strategy,
@@ -91,7 +91,6 @@ const generateSecurityRecommendations = (
     }))
     .sort((a, b) => b.successRate - a.successRate);
 
-  // Map to real-world threat labels
   const threatMapping: Record<string, string> = {
     aggressive: 'SQL Injection / RCE',
     stealthy: 'Phishing / Social Engineering',
@@ -103,7 +102,6 @@ const generateSecurityRecommendations = (
     threatMapping[ranking.strategy] || ranking.strategy
   );
 
-  // Analyze defense strategies by effectiveness
   const defenseStrategyStats = new Map<string, { wins: number; total: number }>();
   simulationResults.forEach(result => {
     const strategy = result.blueStrategy;
@@ -115,7 +113,6 @@ const generateSecurityRecommendations = (
     if (result.outcome === 'blue_win') stats.wins++;
   });
 
-  // Rank defense strategies by win rate
   const defenseRankings = Array.from(defenseStrategyStats.entries())
     .map(([strategy, stats]) => ({
       strategy,
@@ -124,7 +121,6 @@ const generateSecurityRecommendations = (
     }))
     .sort((a, b) => b.winRate - a.winRate);
 
-  // Map to real-world defense labels
   const defenseMapping: Record<string, string> = {
     defensive: 'Multi-Factor Authentication (MFA)',
     reactive: 'SIEM / Intrusion Detection',
@@ -136,14 +132,12 @@ const generateSecurityRecommendations = (
     defenseMapping[ranking.strategy] || ranking.strategy
   );
 
-  // Determine risk level based on breach probability and scenario
   let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
   const adjustedProbability = breachProbability * scenario.environment.systemVulnerability;
 
   if (adjustedProbability >= 0.6) riskLevel = 'HIGH';
   else if (adjustedProbability >= 0.3) riskLevel = 'MEDIUM';
 
-  // Generate summary
   const summary = `Based on ${simulationResults.length} simulation rounds, the breach probability is ${(breachProbability * 100).toFixed(1)}%. ` +
     `${riskLevel === 'HIGH' ? 'High risk detected' : riskLevel === 'MEDIUM' ? 'Moderate risk identified' : 'Low risk environment'}. ` +
     `Top threats include ${topThreats.slice(0, 2).join(' and ')}. ` +
@@ -326,6 +320,10 @@ const SecuritySimulation: React.FC = () => {
   const [numRounds, setNumRounds] = useState(50);
   const [useML, setUseML] = useState(true);
 
+  // ── Q-learning history (capped at MAX_HISTORY snapshots) ──────────────────
+  const [qValueHistory, setQValueHistory] = useState<QValueSnapshot[]>([]);
+  const [actionUsageHistory, setActionUsageHistory] = useState<ActionUsageSnapshot[]>([]);
+
   const actionKeys: ActionKey[] = ['scan', 'exploit', 'defend', 'counter'];
   const getActionDisplayLabel = (action: ActionKey) => getReadableActionLabel(action);
 
@@ -390,7 +388,7 @@ const SecuritySimulation: React.FC = () => {
     const biasedValues = row.map((value, index) => value + (memoryBias[actionKeys[index]] ?? 0));
 
     if (Math.random() < explorationRate) {
-      const weights = actionKeys.map((key, index) => Math.max(0.1, 1 + (memoryBias[key] ?? 0)));
+      const weights = actionKeys.map((key) => Math.max(0.1, 1 + (memoryBias[key] ?? 0)));
       const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
       let random = Math.random() * totalWeight;
       let selected = 0;
@@ -460,11 +458,10 @@ const SecuritySimulation: React.FC = () => {
     let redActions: string[] = [];
     let blueActions: string[] = [];
     let keyEvents: string[] = [];
-    let redScore = 0; // Track red's attack success
-    let blueScore = 0; // Track blue's defense success
-    let duration = Math.random() * 10 + 5; // 5-15 seconds
+    let redScore = 0;
+    let blueScore = 0;
+    let duration = Math.random() * 10 + 5;
 
-    // Normalize capabilities to 0-1 range
     const redAttackNorm = redAgent.capabilities.attackPower / 10;
     const redStealthNorm = redAgent.capabilities.stealth / 10;
     const blueDefenseNorm = blueAgent.capabilities.defensePower / 10;
@@ -479,7 +476,6 @@ const SecuritySimulation: React.FC = () => {
       redActions.push(redAction);
       blueActions.push(blueAction);
 
-      // Action interactions
       if (redAction === 'exploit') {
         if (blueAction === 'defend') {
           const blockedDamage = redAttackNorm * (1 - blueDefenseNorm);
@@ -533,7 +529,6 @@ const SecuritySimulation: React.FC = () => {
       }
     }
 
-    // Apply scenario multiplier
     const scenarioMult = 1 + (scenario.environment.systemVulnerability * 0.5) - (scenario.environment.userAwareness * 0.3);
     redScore *= scenarioMult;
     blueScore *= scenarioMult;
@@ -615,7 +610,14 @@ const SecuritySimulation: React.FC = () => {
       memory: agent.memory ? { ...agent.memory, recentActions: [...agent.memory.recentActions] } : undefined
     }));
 
-    resetAnalytics()
+    resetAnalytics();
+
+    // Reset Q-learning history locals
+    const localQValueHistory: QValueSnapshot[] = [];
+    const localActionUsageHistory: ActionUsageSnapshot[] = [];
+
+    // Sample every N rounds so we never exceed MAX_HISTORY points
+    const sampleEvery = Math.max(1, Math.floor(numRounds / MAX_HISTORY));
 
     for (let round = 0; round < numRounds; round++) {
       const redIndex = Math.floor(Math.random() * localRedAgents.length);
@@ -668,6 +670,35 @@ const SecuritySimulation: React.FC = () => {
       if (useML && blueAgent.qTable) {
         updateQTable(blueAgent.qTable, state, blueChoice.actionIndex, result.rewards.blue, nextState, blueAgent.learningRate, blueAgent.discountFactor);
       }
+
+      // ── Take Q-value + action usage snapshot every sampleEvery rounds ────
+      if (round % sampleEvery === 0) {
+        // Q-value snapshot: max Q-value per agent across all states
+        if (useML) {
+          localQValueHistory.push({
+            round: round + 1,
+            values: Object.fromEntries(
+              [...localRedAgents, ...localBlueAgents]
+                .filter(a => a.qTable)
+                .map(a => [
+                  a.id,
+                  Math.max(...a.qTable!.map(row => Math.max(...row)))
+                ])
+            )
+          });
+        }
+
+        // Action usage snapshot: count actions chosen in this sample window
+        const windowResults = localResults.slice(-sampleEvery);
+        const counts: Record<string, number> = {};
+        windowResults.forEach(r => {
+          const ra = r.details.redActions[0];
+          const ba = r.details.blueActions[0];
+          if (ra) counts[ra] = (counts[ra] ?? 0) + 1;
+          if (ba) counts[ba] = (counts[ba] ?? 0) + 1;
+        });
+        localActionUsageHistory.push({ round: round + 1, counts });
+      }
     }
 
     localRedAgents.forEach(agent => {
@@ -682,11 +713,15 @@ const SecuritySimulation: React.FC = () => {
 
     setStrategyUsage(buildStrategyUsage(localResults));
     setPlaybackIndex(0);
-
     setRedAgents(localRedAgents);
     setBlueAgents(localBlueAgents);
     setSimulationResults(localResults);
     setSecurityRecommendations(generateSecurityRecommendations(localResults, { red: localRedAgents, blue: localBlueAgents }, selectedScenario));
+
+    // Flush Q-learning history to state after loop (avoids per-round re-renders)
+    setQValueHistory(localQValueHistory);
+    setActionUsageHistory(localActionUsageHistory);
+
     setIsRunning(false);
   };
 
@@ -811,7 +846,7 @@ const SecuritySimulation: React.FC = () => {
 
   const runTournament = () => {
     const results: { redAgent: string; blueAgent: string; redWinRate: number; blueWinRate: number; draws: number }[] = [];
-    const numRounds = 100; // Fixed number of rounds per matchup for consistency
+    const numRounds = 100;
 
     for (const redAgent of redAgents) {
       for (const blueAgent of blueAgents) {
@@ -959,12 +994,7 @@ const SecuritySimulation: React.FC = () => {
         const redWins = simulationResults.filter(r => r.outcome === 'red_win').length;
         const score = calculateRiskScore(redWins, simulationResults.length, selectedScenario.environment.systemVulnerability);
         const label = getRiskLabel(score);
-
-        return {
-          score,
-          label,
-          explanation: getRiskExplanation(label)
-        };
+        return { score, label, explanation: getRiskExplanation(label) };
       })()
     : null;
 
@@ -995,7 +1025,7 @@ const SecuritySimulation: React.FC = () => {
       </div>
 
       <Tabs defaultValue="simulation" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="simulation">Simulation</TabsTrigger>
           <TabsTrigger value="agents">Agent Config</TabsTrigger>
           <TabsTrigger value="create-agent">Create Agent</TabsTrigger>
@@ -1004,6 +1034,7 @@ const SecuritySimulation: React.FC = () => {
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="tournament">Tournament</TabsTrigger>
+          <TabsTrigger value="qlearning">Q-Learning</TabsTrigger>
         </TabsList>
 
         <TabsContent value="simulation" className="space-y-6">
@@ -1137,7 +1168,6 @@ const SecuritySimulation: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-
         </TabsContent>
 
         <TabsContent value="create-agent" className="space-y-6">
@@ -1431,7 +1461,7 @@ const SecuritySimulation: React.FC = () => {
                   <h4 className="font-semibold">Scenario Impact</h4>
                   <p className="text-sm">
                     The {selectedScenario.name} scenario with {selectedScenario.difficulty} difficulty level
-                    {selectedScenario.difficulty === 'hard' ? ' significantly reduced' : ' moderately affected'} 
+                    {selectedScenario.difficulty === 'hard' ? ' significantly reduced' : ' moderately affected'}
                     attack success rates due to {selectedScenario.environment.userAwareness > 0.7 ? 'high user awareness' : 'environmental factors'}.
                   </p>
                 </div>
@@ -1454,32 +1484,23 @@ const SecuritySimulation: React.FC = () => {
                           Breach Probability: {(securityRecommendations.breachProbability * 100).toFixed(1)}%
                         </span>
                       </div>
-
                       <div>
                         <span className="font-medium">Top Threats:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {securityRecommendations.topThreats.map((threat, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {threat}
-                            </Badge>
+                            <Badge key={index} variant="outline" className="text-xs">{threat}</Badge>
                           ))}
                         </div>
                       </div>
-
                       <div>
                         <span className="font-medium">Recommended Defenses:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {securityRecommendations.recommendedDefenses.map((defense, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {defense}
-                            </Badge>
+                            <Badge key={index} variant="secondary" className="text-xs">{defense}</Badge>
                           ))}
                         </div>
                       </div>
-
-                      <p className="text-sm text-gray-700 mt-2">
-                        {securityRecommendations.summary}
-                      </p>
+                      <p className="text-sm text-gray-700 mt-2">{securityRecommendations.summary}</p>
                     </div>
                   ) : (
                     <p className="text-sm">
@@ -1583,6 +1604,16 @@ const SecuritySimulation: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Q-Learning Tab ───────────────────────────────────────────────── */}
+        <TabsContent value="qlearning" className="space-y-6">
+          <QLearningCharts
+            qValueHistory={qValueHistory}
+            actionUsageHistory={actionUsageHistory}
+            agentIds={[...redAgents, ...blueAgents].map(a => a.id)}
+          />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
