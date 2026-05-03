@@ -1,5 +1,18 @@
 export type ActionKey = 'scan' | 'exploit' | 'defend' | 'counter'
 
+export type ScenarioDifficulty = 'easy' | 'medium' | 'hard'
+
+export interface Scenario {
+  name: string
+  description: string
+  difficulty: ScenarioDifficulty
+  environment: {
+    networkComplexity: number
+    userAwareness: number
+    systemVulnerability: number
+  }
+}
+
 export type AgentActionResult = 'success' | 'failure' | 'draw'
 
 export interface AgentMemoryEntry {

@@ -12,9 +12,13 @@ import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useSimulationAnalytics } from '@/hooks/useSimulationAnalytics';
 import { SimulationAnalyticsChart } from '@/components/SimulationAnalyticsChart';
-import { Agent, ActionKey, ScenarioComparisonResult } from '@/types/simulation';
+import { Agent, ActionKey, Scenario, ScenarioComparisonResult } from '@/types/simulation';
 import { AgentBuilderForm } from '@/components/AgentBuilderForm';
-import { actionMappings, getReadableActionLabel } from '@/config/actionMappings';
+import { ScenarioBuilderForm } from '@/components/ScenarioBuilderForm';
+import { RiskCard } from '@/components/RiskCard';
+import { StatCard } from '@/components/StatCard';
+import { InsightCard } from '@/components/InsightCard';
+import { getReadableActionLabel } from '@/config/actionMappings';
 
 const calculateRiskScore = (redWins: number, totalRounds: number, scenarioMultiplier: number) => {
   if (totalRounds === 0) return 0
@@ -38,6 +42,121 @@ const getRiskExplanation = (label: 'LOW' | 'MEDIUM' | 'HIGH') => {
       return 'Low risk: defenders maintain strong control over the attack surface.'
   }
 }
+
+interface SecurityRecommendations {
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  breachProbability: number;
+  topThreats: string[];
+  recommendedDefenses: string[];
+  summary: string;
+}
+
+const generateSecurityRecommendations = (
+  simulationResults: AttackResult[],
+  agents: { red: Agent[]; blue: Agent[] },
+  scenario: Scenario
+): SecurityRecommendations => {
+  if (simulationResults.length === 0) {
+    return {
+      riskLevel: 'LOW',
+      breachProbability: 0,
+      topThreats: [],
+      recommendedDefenses: [],
+      summary: 'No simulation data available'
+    };
+  }
+
+  // Calculate breach probability
+  const redWins = simulationResults.filter(r => r.outcome === 'red_win').length;
+  const breachProbability = redWins / simulationResults.length;
+
+  // Analyze attack strategies by success rate
+  const attackStrategyStats = new Map<string, { wins: number; total: number }>();
+  simulationResults.forEach(result => {
+    const strategy = result.redStrategy;
+    if (!attackStrategyStats.has(strategy)) {
+      attackStrategyStats.set(strategy, { wins: 0, total: 0 });
+    }
+    const stats = attackStrategyStats.get(strategy)!;
+    stats.total++;
+    if (result.outcome === 'red_win') stats.wins++;
+  });
+
+  // Rank attack strategies by success rate
+  const attackRankings = Array.from(attackStrategyStats.entries())
+    .map(([strategy, stats]) => ({
+      strategy,
+      successRate: stats.wins / stats.total,
+      totalAttempts: stats.total
+    }))
+    .sort((a, b) => b.successRate - a.successRate);
+
+  // Map to real-world threat labels
+  const threatMapping: Record<string, string> = {
+    aggressive: 'SQL Injection / RCE',
+    stealthy: 'Phishing / Social Engineering',
+    persistent: 'APT / Advanced Persistent Threats',
+    reactive: 'Zero-day Exploits'
+  };
+
+  const topThreats = attackRankings.slice(0, 3).map(ranking =>
+    threatMapping[ranking.strategy] || ranking.strategy
+  );
+
+  // Analyze defense strategies by effectiveness
+  const defenseStrategyStats = new Map<string, { wins: number; total: number }>();
+  simulationResults.forEach(result => {
+    const strategy = result.blueStrategy;
+    if (!defenseStrategyStats.has(strategy)) {
+      defenseStrategyStats.set(strategy, { wins: 0, total: 0 });
+    }
+    const stats = defenseStrategyStats.get(strategy)!;
+    stats.total++;
+    if (result.outcome === 'blue_win') stats.wins++;
+  });
+
+  // Rank defense strategies by win rate
+  const defenseRankings = Array.from(defenseStrategyStats.entries())
+    .map(([strategy, stats]) => ({
+      strategy,
+      winRate: stats.wins / stats.total,
+      totalDefenses: stats.total
+    }))
+    .sort((a, b) => b.winRate - a.winRate);
+
+  // Map to real-world defense labels
+  const defenseMapping: Record<string, string> = {
+    defensive: 'Multi-Factor Authentication (MFA)',
+    reactive: 'SIEM / Intrusion Detection',
+    proactive: 'Zero Trust Architecture',
+    persistent: 'Active Defense / Honeypots'
+  };
+
+  const recommendedDefenses = defenseRankings.slice(0, 2).map(ranking =>
+    defenseMapping[ranking.strategy] || ranking.strategy
+  );
+
+  // Determine risk level based on breach probability and scenario
+  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+  const adjustedProbability = breachProbability * scenario.environment.systemVulnerability;
+
+  if (adjustedProbability >= 0.6) riskLevel = 'HIGH';
+  else if (adjustedProbability >= 0.3) riskLevel = 'MEDIUM';
+
+  // Generate summary
+  const summary = `Based on ${simulationResults.length} simulation rounds, the breach probability is ${(breachProbability * 100).toFixed(1)}%. ` +
+    `${riskLevel === 'HIGH' ? 'High risk detected' : riskLevel === 'MEDIUM' ? 'Moderate risk identified' : 'Low risk environment'}. ` +
+    `Top threats include ${topThreats.slice(0, 2).join(' and ')}. ` +
+    `Recommended defenses: ${recommendedDefenses.join(' and ')}.`;
+
+  return {
+    riskLevel,
+    breachProbability,
+    topThreats,
+    recommendedDefenses,
+    summary
+  };
+};
 
 interface Scenario {
   name: string;
@@ -193,12 +312,14 @@ const SecuritySimulation: React.FC = () => {
   ]);
 
   const [selectedScenario, setSelectedScenario] = useState<Scenario>(scenarios[0]);
+  const [customScenario, setCustomScenario] = useState<Scenario | null>(null);
   const [simulationResults, setSimulationResults] = useState<AttackResult[]>([]);
   const [strategyUsage, setStrategyUsage] = useState<{ red: Record<string, number>; blue: Record<string, number> }>({ red: {}, blue: {} });
   const [whatIfSummary, setWhatIfSummary] = useState<WhatIfSummary[]>([]);
   const [compareScenario, setCompareScenario] = useState<Scenario>(scenarios[1]);
   const [scenarioComparisonResults, setScenarioComparisonResults] = useState<ScenarioComparisonResult[]>([]);
   const [tournamentResults, setTournamentResults] = useState<{ redAgent: string; blueAgent: string; redWinRate: number; blueWinRate: number; draws: number }[]>([]);
+  const [securityRecommendations, setSecurityRecommendations] = useState<SecurityRecommendations | null>(null);
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const { evolutionData, appendRound, resetAnalytics } = useSimulationAnalytics();
   const [isRunning, setIsRunning] = useState(false);
@@ -206,12 +327,7 @@ const SecuritySimulation: React.FC = () => {
   const [useML, setUseML] = useState(true);
 
   const actionKeys: ActionKey[] = ['scan', 'exploit', 'defend', 'counter'];
-  const actionLabels: Record<ActionKey, string> = {
-    scan: getReadableActionLabel('scan'),
-    exploit: getReadableActionLabel('exploit'),
-    defend: getReadableActionLabel('defend'),
-    counter: getReadableActionLabel('counter')
-  };
+  const getActionDisplayLabel = (action: ActionKey) => getReadableActionLabel(action);
 
   const strategyLabels: Record<string, string> = {
     aggressive: 'Exploit Blitz',
@@ -356,8 +472,8 @@ const SecuritySimulation: React.FC = () => {
 
     const redAction = actions[redChoice.actionIndex] ?? 'scan';
     const blueAction = actions[blueChoice.actionIndex] ?? 'defend';
-    const redActionLabel = actionLabels[redAction];
-    const blueActionLabel = actionLabels[blueAction];
+    const redActionLabel = getActionDisplayLabel(redAction);
+    const blueActionLabel = getActionDisplayLabel(blueAction);
 
     for (let step = 0; step < Math.min(redAgent.restrictions.maxActions, blueAgent.restrictions.maxActions); step++) {
       redActions.push(redAction);
@@ -522,8 +638,8 @@ const SecuritySimulation: React.FC = () => {
 
       const redAction = actionKeys[redChoice.actionIndex];
       const blueAction = actionKeys[blueChoice.actionIndex];
-      const redActionLabel = actionLabels[redAction] ?? 'Unknown Attack';
-      const blueActionLabel = actionLabels[blueAction] ?? 'Unknown Defense';
+      const redActionLabel = getActionDisplayLabel(redAction) ?? 'Unknown Attack';
+      const blueActionLabel = getActionDisplayLabel(blueAction) ?? 'Unknown Defense';
       const redChoiceReason = getChoiceReason(redChoice, redActionLabel, redAgent);
       const blueChoiceReason = getChoiceReason(blueChoice, blueActionLabel, blueAgent);
 
@@ -570,6 +686,7 @@ const SecuritySimulation: React.FC = () => {
     setRedAgents(localRedAgents);
     setBlueAgents(localBlueAgents);
     setSimulationResults(localResults);
+    setSecurityRecommendations(generateSecurityRecommendations(localResults, { red: localRedAgents, blue: localBlueAgents }, selectedScenario));
     setIsRunning(false);
   };
 
@@ -632,8 +749,8 @@ const SecuritySimulation: React.FC = () => {
         : { actionIndex: Math.floor(Math.random() * actionKeys.length), exploration: false };
       const redAction = actionKeys[redChoice.actionIndex];
       const blueAction = actionKeys[blueChoice.actionIndex];
-      const redActionLabel = actionLabels[redAction] ?? 'Unknown Attack';
-      const blueActionLabel = actionLabels[blueAction] ?? 'Unknown Defense';
+      const redActionLabel = getActionDisplayLabel(redAction) ?? 'Unknown Attack';
+      const blueActionLabel = getActionDisplayLabel(blueAction) ?? 'Unknown Defense';
       const redChoiceReason = getChoiceReason(redChoice, redActionLabel, redAgent);
       const blueChoiceReason = getChoiceReason(blueChoice, blueActionLabel, blueAgent);
       const result = simulateDetailedRound(
@@ -717,8 +834,8 @@ const SecuritySimulation: React.FC = () => {
 
           const redAction = actionKeys[redChoice.actionIndex];
           const blueAction = actionKeys[blueChoice.actionIndex];
-          const redActionLabel = actionLabels[redAction] ?? 'Unknown Attack';
-          const blueActionLabel = actionLabels[blueAction] ?? 'Unknown Defense';
+          const redActionLabel = getActionDisplayLabel(redAction) ?? 'Unknown Attack';
+          const blueActionLabel = getActionDisplayLabel(blueAction) ?? 'Unknown Defense';
           const redChoiceReason = getChoiceReason(redChoice, redActionLabel, redAgent);
           const blueChoiceReason = getChoiceReason(blueChoice, blueActionLabel, blueAgent);
 
@@ -873,12 +990,13 @@ const SecuritySimulation: React.FC = () => {
       </div>
 
       <Tabs defaultValue="simulation" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="simulation">Simulation</TabsTrigger>
           <TabsTrigger value="agents">Agent Config</TabsTrigger>
           <TabsTrigger value="create-agent">Create Agent</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
           <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="tournament">Tournament</TabsTrigger>
         </TabsList>
 
@@ -1305,14 +1423,89 @@ const SecuritySimulation: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold">Security Recommendations</h4>
-                  <p className="text-sm">
-                    Based on the simulation results, implementing {stats?.bestBlueStrategy} defense strategies
-                    and monitoring for {stats?.bestRedStrategy} attack patterns would significantly improve security posture.
-                  </p>
+                  {securityRecommendations ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span>Risk Level:</span>
+                        <Badge variant={securityRecommendations.riskLevel === 'HIGH' ? 'destructive' : securityRecommendations.riskLevel === 'MEDIUM' ? 'secondary' : 'default'}>
+                          {securityRecommendations.riskLevel}
+                        </Badge>
+                        <span className="text-sm text-gray-600">
+                          Breach Probability: {(securityRecommendations.breachProbability * 100).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="font-medium">Top Threats:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {securityRecommendations.topThreats.map((threat, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {threat}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="font-medium">Recommended Defenses:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {securityRecommendations.recommendedDefenses.map((defense, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {defense}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-gray-700 mt-2">
+                        {securityRecommendations.summary}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm">
+                      Based on the simulation results, implementing {stats?.bestBlueStrategy} defense strategies
+                      and monitoring for {stats?.bestRedStrategy} attack patterns would significantly improve security posture.
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            <RiskCard
+              title="Risk Overview"
+              riskLevel={risk?.label ?? 'LOW'}
+              score={risk?.score ?? 0}
+              description={risk?.explanation ?? 'Run a simulation to analyze risk.'}
+            />
+            <StatCard
+              title="Red vs Blue"
+              value={stats ? `${stats.redWinRate}% / ${stats.blueWinRate}%` : '—'}
+              label="Red win rate vs Blue win rate"
+              badge="Win Rate"
+            />
+            <StatCard
+              title="Breach Probability"
+              value={securityRecommendations ? `${(securityRecommendations.breachProbability * 100).toFixed(1)}%` : '—'}
+              label="Probability of a successful breach"
+            />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <InsightCard
+              title="Top Threat"
+              insights={securityRecommendations?.topThreats.length ? [securityRecommendations.topThreats[0]] : ['Run a simulation to identify threats']}
+              description="The most likely attack vector identified by the latest analysis."
+            />
+            <InsightCard
+              title="Recommended Defense"
+              insights={securityRecommendations?.recommendedDefenses.length ? [securityRecommendations.recommendedDefenses[0]] : ['Run a simulation to generate defenses']}
+              description="The highest-impact defense for the current environment."
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="tournament" className="space-y-6">
