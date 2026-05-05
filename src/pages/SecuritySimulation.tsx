@@ -1525,15 +1525,21 @@ const SecuritySimulation: React.FC = () => {
                   <h4 className="font-semibold">Breach Likelihood</h4>
                   <p className="text-sm">
                     The {selectedScenario.name} scenario with {selectedScenario.difficulty} difficulty level
-                    has a breach likelihood of {securityRecommendations.breachProbability}, 
-                    as a result of these threats {securityRecommendations.topThreats}.
+                    has a breach likelihood of {securityRecommendations?.breachProbability}, 
+                    as a result of these threats: 
+                    <span className="font-medium">
+                      {securityRecommendations?.topThreats?.join(", ") || "None identified"}
+                    </span>.
                   </p>
                 </div>
                 <div>
                   <h4 className="font-semibold">Defensive actions</h4>
                   <p className="text-sm">
-                    Incorporating these suggested defensive actions {securityRecommendations.recommendedDefenses}
-                    has a {securityRecommendations.riskLevel} of working.
+                    Incorporating these suggested defensive actions: 
+                    <span className="font-medium">
+                      {securityRecommendations?.recommendedDefenses?.join(", ") || "N/A"}
+                    </span> 
+                    {" "}has a {securityRecommendations?.riskLevel} of working.
                   </p>
                 </div>
               </div>
