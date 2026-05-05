@@ -1020,19 +1020,6 @@ const SecuritySimulation: React.FC = () => {
 
   const playbackResult = simulationResults[playbackIndex];
 
-  const getBreachReport = (scenario: Scenario) => {
-    if (simulationResults.length === 0) return null;
-
-    return {
-      breachLikelihood: securityRecommendations.breachProbability,
-      vulnerabilities: securityRecommendations.topThreats,
-      mitigations: securityRecommendations.recommendedDefenses,
-      confidence: securityRecommendations.riskLevel
-    }
-
-
-
-  };
 
   return (
     <div className="container mx-auto p-4 max-w-7xl">
