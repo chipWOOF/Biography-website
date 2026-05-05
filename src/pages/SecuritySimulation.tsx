@@ -205,6 +205,13 @@ interface WhatIfSummary {
   riskLabel: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
+interface BreachReport {
+  breachLikelihood: number,
+  vulnerabilities: string[],
+  mitigations: string[],
+  confidence: "LOW" | "medium" | "high"
+}
+
 const SecuritySimulation: React.FC = () => {
   const [redAgents, setRedAgents] = useState<Agent[]>([
     {
@@ -1013,6 +1020,20 @@ const SecuritySimulation: React.FC = () => {
 
   const playbackResult = simulationResults[playbackIndex];
 
+  const getBreachReport = (scenario: Scenario) => {
+    if (simulationResults.length === 0) return null;
+
+    return {
+      breachLikelihood: securityRecommendations.breachProbability,
+      vulnerabilities: securityRecommendations.topThreats,
+      mitigations: securityRecommendations.recommendedDefenses,
+      confidence: securityRecommendations.riskLevel
+    }
+
+
+
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
@@ -1512,6 +1533,31 @@ const SecuritySimulation: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Breach Report</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold">Breach Likelihood</h4>
+                  <p className="text-sm">
+                    The {selectedScenario.name} scenario with {selectedScenario.difficulty} difficulty level
+                    has a breach likelihood of {securityRecommendations.breachProbability}, 
+                    as a result of these threats {securityRecommendations.topThreats}.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Defensive actions</h4>
+                  <p className="text-sm">
+                    Incorporating these suggested defensive actions {securityRecommendations.recommendedDefenses}
+                    has a {securityRecommendations.riskLevel} of working.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -1618,12 +1664,5 @@ const SecuritySimulation: React.FC = () => {
     </div>
   );
 };
-
-interface BreachReport {
-  breachLikelihood: number,
-  vulnerabilities: string[],
-  mitigations: string[],
-  confidence: "LOW" | "medium" | "high"
-}
 
 export default SecuritySimulation;
