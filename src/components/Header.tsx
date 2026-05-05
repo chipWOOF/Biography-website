@@ -11,7 +11,11 @@ export const Header = () => {
           <div className="flex items-center space-x-2">
             <span className="text-xl font-bold ">MinhDaRooler</span>
           </div>
-
+          <div className="flex items-center space-x-2">
+            <Link to="/projects" className="text-muted-foreground hover:text-foreground transition-colors">
+              My Projects
+            </Link>
+          </div>
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
