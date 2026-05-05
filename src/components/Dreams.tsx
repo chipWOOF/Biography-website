@@ -9,7 +9,7 @@ const about = [
   },
   {
     name: "What do I want to achieve in the next 5 years?",
-    content: "One thing I want to achieve in the next 5 years is: get an int**nship, get a j*b. Some more short term goals include getting into the Devsoc 2025 T3 webdev training programing (PLEEEEEEEEAAAAASEEEEEE🙏🙏🙏🙏🙏🙏🙏🙏🙏🙏🙏)"
+    content: "One thing I want to achieve in the next 5 years is: get an internship and a job"
   },
   {
     name: "My dreams",
