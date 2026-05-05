@@ -205,12 +205,6 @@ interface WhatIfSummary {
   riskLabel: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
-interface BreachReport {
-  breachLikelihood: number,
-  vulnerabilities: string[],
-  mitigations: string[],
-  confidence: "LOW" | "medium" | "high"
-}
 
 const SecuritySimulation: React.FC = () => {
   const [redAgents, setRedAgents] = useState<Agent[]>([
