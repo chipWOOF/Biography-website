@@ -1619,4 +1619,11 @@ const SecuritySimulation: React.FC = () => {
   );
 };
 
+interface BreachReport {
+  breachLikelihood: number,
+  vulnerabilities: string[],
+  mitigations: string[],
+  confidence: "LOW" | "medium" | "high"
+}
+
 export default SecuritySimulation;
